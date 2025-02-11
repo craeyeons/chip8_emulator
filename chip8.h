@@ -10,6 +10,8 @@
 class Chip8 {
 public:
     Chip8();
+    bool trigger_redraw_ = true;
+    std::array<std::array<uint8_t, kDisplayHeight>, kDisplayWidth> display_data_;
     bool LoadProgram(const std::string filename);
     void Execute();
 private:
@@ -24,8 +26,8 @@ private:
     uint8_t sound_timer_;
 
     void TickTimers();
-    void StoreInMemory(uint8_t offset, uint8_t to_save);
-    void StoreInMemory(uint8_t offset, uint16_t to_save);
+    void StoreInMemory(int offset, uint8_t to_save);
+    void StoreInMemory(int offset, uint16_t to_save);
 };
 
 #endif

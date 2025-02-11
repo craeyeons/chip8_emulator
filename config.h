@@ -28,5 +28,18 @@ constexpr uint8_t kNumberOfRegisters = 16;
 constexpr uint8_t kTimerFrequency = 60;
 constexpr uint8_t kDisplayHeight = 32;
 constexpr uint8_t kDisplayWidth = 64;
+constexpr uint8_t kPixelSize = 10;
+
+constexpr uint8_t kFPS = 60;
+
+constexpr uint16_t kClearScreen = 0x00E0;
+constexpr uint16_t kJump = 0x1000;
+constexpr uint16_t kSetRegister = 0x6000;
+constexpr uint16_t kAdd = 0x7000;
+constexpr uint16_t kSetIndexRegister = 0xA000;
+constexpr uint16_t kDraw = 0xD000;
+
+constexpr uint16_t kGetX = 0x0F00;
+constexpr uint16_t kGetY = 0x00F0;
 
 #endif

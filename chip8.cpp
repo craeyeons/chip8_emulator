@@ -7,11 +7,11 @@
 #include "chip8.h"
 #include "config.h"
 
-void Chip8::StoreInMemory(uint8_t offset, uint8_t to_save) {
+void Chip8::StoreInMemory(int offset, uint8_t to_save) {
     memory_[offset] = to_save;
 }
 
-void Chip8::StoreInMemory(uint8_t offset, uint16_t to_save) {
+void Chip8::StoreInMemory(int offset, uint16_t to_save) {
     memory_[offset] = to_save & 0xFF;
     memory_[offset + 1] = to_save >> 8;
 }
@@ -24,23 +24,90 @@ bool Chip8::LoadProgram(const std::string filename) {
         return false;
     }
 
-    file.seekg(std::ios::end);
+    file.seekg(0, file.end);
     size_t size = file.tellg();
-    file.seekg(std::ios::beg);
+    file.seekg(0, file.beg);
+    std::cout << "Read " << size << " bytes from file!" << std::endl;
 
-    std::vector<uint8_t> program(size);
-    file.read(reinterpret_cast<char*>(&program), size);
-
-    for (uint16_t i = 0; i < size; i++) {
-        StoreInMemory(0x200 + i, program[i]);
+    char c;
+    for (uint16_t i = 0; file.get(c); i++) {
+        StoreInMemory(0x200 + i, (uint8_t) c);
     }
 
     return true;
 }
 
+void Chip8::Execute() {    
+    uint16_t opcode = memory_[program_counter_] << 8 | memory_[program_counter_ + 1];
+    program_counter_ += 2;
+
+    uint16_t first_nibble = opcode & 0xF000;
+
+    switch (first_nibble) {
+        // 0x00E0: Clear screen
+        // 0x00EE: Subroutines
+        // 0x0NNN: Ignored
+        case 0x0000:
+            if (opcode & 0x000E) {
+                
+            } else if (opcode == 0x00E0) {
+                memset(display_data_.data(), 0, sizeof(display_data_));
+            }
+            break;
+            
+
+        // 0x1NNN: Jump to address NNN
+        case 0x1000:
+            program_counter_ = opcode & 0x0FFF;
+            break;
+
+        // 0x6XNN: Set register X to NN
+        case 0x6000:
+            registers_[(opcode & 0x0F00) >> 8] = opcode & 0x00FF;
+            break;
+
+        // 0x7XNN: Add NN to register X
+        case 0x7000:
+            registers_[(opcode & 0x0F00) >> 8] += opcode & 0x00FF;
+            break;
+
+        // 0xA000: Set index register to NNN
+        case 0xA000:
+            index_register_ = opcode & 0x0FFF;
+            break;
+
+        // 0xDXYN: Draw sprite at (X, Y) with height N
+        case 0xD000:
+            trigger_redraw_ = true;
+
+            uint8_t x = registers_[(opcode & 0x0F00) >> 8] & 63;
+            uint8_t y = registers_[(opcode & 0x00F0) >> 4] & 31;
+            uint8_t height = opcode & 0x000F;
+            registers_[0xF] = 0;
+
+            uint8_t sprite;
+            for (int i = 0; i < height && (i + y) < kDisplayHeight; i++) {
+                sprite = memory_[index_register_ + i];
+                for (int j = 0; j < 8 && (j + x) < kDisplayWidth; j++) {
+                    uint8_t pixel = sprite & (0x80 >> j);
+                    if (pixel > 0) {
+                        if (display_data_[x + j][y + i] == 1) {
+                            registers_[0xF] = 1;
+                        }
+                        display_data_[x + j][y + i] ^= 1;
+                    }
+                }
+            }
+            // validateDisplay(display_data_);
+            break;
+    }
+}
+
 
 Chip8::Chip8() {
     program_counter_ = kProgramStart;
+    memset(display_data_.data(), 0, sizeof(display_data_));
+    memset(memory_.data(), 0, sizeof(memory_));
 
     for (int i = 0; i < 16 * 5; i++) {
         StoreInMemory(0x50 + 2 * i, kFonts[i]);
