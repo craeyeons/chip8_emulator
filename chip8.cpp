@@ -98,7 +98,6 @@ void Chip8::Execute() {
                     }
                 }
             }
-            // validateDisplay(display_data_);
             break;
     }
 }

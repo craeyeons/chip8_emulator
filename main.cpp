@@ -15,7 +15,6 @@ int main(int argc, char* argv[]) {
 
     InitWindow(kDisplayWidth * kPixelSize, kDisplayHeight * kPixelSize, "Chip 8 Emulator");
     SetTargetFPS(kFPS);
-    int count = 10;
 
     while (!WindowShouldClose())
     {
