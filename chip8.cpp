@@ -47,37 +47,145 @@ void Chip8::Execute() {
         // 0x00E0: Clear screen
         // 0x00EE: Subroutines
         // 0x0NNN: Ignored
-        case 0x0000:
-            if (opcode & 0x000E) {
-                
+        case 0x0000: {
+            if (opcode == 0x00EE) {
+                program_counter_ = stack_[--stack_pointer_];
             } else if (opcode == 0x00E0) {
                 memset(display_data_.data(), 0, sizeof(display_data_));
             }
             break;
-            
+        }
 
         // 0x1NNN: Jump to address NNN
-        case 0x1000:
+        case 0x1000: {
             program_counter_ = opcode & 0x0FFF;
             break;
+        }
+
+        // 0x2NNN: Subroutines
+        case 0x2000: {
+            stack_[stack_pointer_++] = program_counter_;
+            program_counter_ = opcode & 0x0FFF;
+            break;
+        }
+
+        // 0x3XNN
+        case 0x3000: {
+            uint8_t x = registers_[(opcode & 0x0F00) >> 8];
+            uint8_t value = opcode & 0x00FF;
+
+            if (x == value) {
+                program_counter_ += 2;
+            }
+            break;
+        }
+
+        // 0x4XNN
+        case 0x4000: {
+            uint8_t x = registers_[(opcode & 0x0F00) >> 8];
+            uint8_t value = opcode & 0x00FF;
+
+            if (x != value) {
+                program_counter_ += 2;
+            }
+            break;
+        }
+
+        // 0x5XY0
+        case 0x5000: {
+            uint8_t x = registers_[(opcode & 0x0F00) >> 8];
+            uint8_t y = registers_[(opcode & 0x00F0) >> 4];
+
+            if (x == y) {
+                program_counter_ += 2;
+            }
+            break;
+        }
 
         // 0x6XNN: Set register X to NN
-        case 0x6000:
+        case 0x6000: {
             registers_[(opcode & 0x0F00) >> 8] = opcode & 0x00FF;
             break;
+        }
 
         // 0x7XNN: Add NN to register X
-        case 0x7000:
+        case 0x7000: {
             registers_[(opcode & 0x0F00) >> 8] += opcode & 0x00FF;
             break;
+        }
+
+        // 0x8XYR: Arithmetic Operations
+        case 0x8000: {
+            uint16_t last_nibble = opcode & 0x000F;
+            uint8_t x = registers_[(opcode & 0x0F00) >> 8];
+            uint8_t y = registers_[(opcode & 0x00F0) >> 4];
+
+            switch (last_nibble) {
+                case 0: 
+                    registers_[(opcode & 0x0F00) >> 8] = y;
+                    break;
+
+                case 1: 
+                    registers_[(opcode & 0x0F00) >> 8] |= y;
+                    break;
+
+                case 2:
+                    registers_[(opcode & 0x0F00) >> 8] &= y;
+                    break;
+
+                case 3:
+                    registers_[(opcode & 0x0F00) >> 8] ^= y;
+                    break;
+
+                case 4:
+                    registers_[0xF] = x + y > 255 ? 1 : 0;
+                    registers_[(opcode & 0x0F00) >> 8] += y;
+                    break;
+
+                case 5:
+                    registers_[0xF] = x > y ? 1 : 0;
+                    registers_[(opcode & 0x0F00) >> 8] = x - y;
+                    break;
+
+                case 6:
+                    registers_[(opcode & 0x0F00) >> 8] = y >> 1;
+                    registers_[0xF] = y & 1 ? 1 : 0;
+                    break;
+
+                case 7:
+                    registers_[0xF] = x < y ? 1 : 0;
+                    registers_[(opcode & 0x0F00) >> 8] = y - x;
+                    break;
+
+                case 0xE:
+                    registers_[(opcode & 0x0F00) >> 8] = y << 1;
+                    registers_[0xF] = y & (1 << 7) ? 1 : 0;
+                    break;
+
+            }
+
+            break;
+        }
+
+        // 0x9XY0
+        case 0x9000: {
+            uint8_t x = registers_[(opcode & 0x0F00) >> 8];
+            uint8_t y = registers_[(opcode & 0x00F0) >> 4];
+
+            if (x != y) {
+                program_counter_ += 2;
+            }
+            break;
+        }
 
         // 0xA000: Set index register to NNN
-        case 0xA000:
+        case 0xA000: {
             index_register_ = opcode & 0x0FFF;
             break;
+        }
 
         // 0xDXYN: Draw sprite at (X, Y) with height N
-        case 0xD000:
+        case 0xD000: {
             trigger_redraw_ = true;
 
             uint8_t x = registers_[(opcode & 0x0F00) >> 8] & 63;
@@ -99,12 +207,14 @@ void Chip8::Execute() {
                 }
             }
             break;
+        }
     }
 }
 
 
 Chip8::Chip8() {
     program_counter_ = kProgramStart;
+    stack_pointer_ = 0;
     memset(display_data_.data(), 0, sizeof(display_data_));
     memset(memory_.data(), 0, sizeof(memory_));
 
