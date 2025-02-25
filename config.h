@@ -3,7 +3,23 @@
 
 #include <cstdint>
 
+#include "raylib.h"
+
 constexpr int kMemorySize = 4096;
+constexpr uint8_t kNumberOfKeys = 16;
+constexpr std::array<int, kNumberOfKeys> kKeys = {
+    KEY_ONE, KEY_TWO, KEY_THREE, KEY_FOUR, 
+    KEY_Q, KEY_W, KEY_E, KEY_R,
+    KEY_A, KEY_S, KEY_D, KEY_F,
+    KEY_Z, KEY_X, KEY_C, KEY_V
+};
+constexpr std::array<int, kNumberOfKeys> kKeyMap = {
+    1, 2, 3, 0xC,
+    4, 5, 6, 0xD,
+    7, 8, 9, 0xE,
+    0xA, 0, 0xB, 0xF
+};
+
 constexpr uint16_t kFonts[16 * 5] = {
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
     0x20, 0x60, 0x20, 0x20, 0x70, // 1
@@ -31,6 +47,7 @@ constexpr uint8_t kDisplayWidth = 64;
 constexpr uint8_t kPixelSize = 10;
 
 constexpr uint8_t kFPS = 60;
+constexpr std::chrono::milliseconds kTickInterval = std::chrono::milliseconds(1000 / kTimerFrequency);
 
 constexpr uint16_t kClearScreen = 0x00E0;
 constexpr uint16_t kJump = 0x1000;

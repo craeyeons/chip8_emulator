@@ -18,6 +18,7 @@ int main(int argc, char* argv[]) {
 
     while (!WindowShouldClose())
     {
+        emulator.LogKeyPresses();
         emulator.Execute();
         if (emulator.trigger_redraw_) {
             emulator.trigger_redraw_ = false;

@@ -4,6 +4,7 @@
 #include <vector>
 #include <chrono>
 
+#include "raylib.h"
 #include "chip8.h"
 #include "config.h"
 
@@ -37,8 +38,22 @@ bool Chip8::LoadProgram(const std::string filename) {
     return true;
 }
 
-void Chip8::Execute() {    
+void Chip8::LogKeyPresses() {
+    for (int i = 0; i < kNumberOfKeys; i++) {
+        if (IsKeyDown(kKeys[i])) {
+            key_presess_[kKeyMap[i]] = 1;
+        } else {
+            key_presess_[kKeyMap[i]] = 0;
+        }
+    }
+}
+
+void Chip8::Execute() {   
+    TickTimers();
+
     uint16_t opcode = memory_[program_counter_] << 8 | memory_[program_counter_ + 1];
+    std::cout << std::hex << opcode << std::endl;
+
     program_counter_ += 2;
 
     uint16_t first_nibble = opcode & 0xF000;
@@ -184,6 +199,22 @@ void Chip8::Execute() {
             break;
         }
 
+        // 0xB000: Jump with offset
+        case 0xB000: {
+            uint16_t offset = opcode & 0x0FFF;
+            program_counter_ = registers_[0x0] + offset;
+            break;
+        }
+
+        // 0xCXNN: Random
+        case 0xC000: {
+            // To Change, generate random int
+            uint8_t random_number = 0x1F;
+            uint8_t offset = opcode & 0xFF;
+            registers_[(opcode & 0x0F00) >> 8] = random_number | offset;
+            break;
+        }
+
         // 0xDXYN: Draw sprite at (X, Y) with height N
         case 0xD000: {
             trigger_redraw_ = true;
@@ -208,6 +239,100 @@ void Chip8::Execute() {
             }
             break;
         }
+
+        // 0xEX9E and EXA1: Skip if key
+        case 0xE000: {
+            uint8_t reigster_index = (opcode & 0xF00) >> 8;
+            uint8_t corresponding_key = registers_[reigster_index];
+            uint8_t is_pressed = key_presess_[corresponding_key];
+            uint8_t last_two_nibbles = opcode & 0xFF;
+
+            switch (last_two_nibbles) {
+                case 0x9E: {
+                    if (is_pressed) {
+                        program_counter_ += 2;
+                    }
+                    break;
+                }
+                
+                case 0xA1: {
+                    if (!is_pressed) {
+                        program_counter_ += 2;
+                    }
+                    break;
+                }
+            }
+            break;
+        }
+
+        case 0xF000: {
+            uint8_t reigster_index = (opcode & 0xF00) >> 8;
+            uint8_t last_two_nibbles = opcode & 0xFF;
+            switch (last_two_nibbles) {
+                case 0x07: {
+                    registers_[reigster_index] = delay_timer_;
+                    break;
+                }
+
+                case 0x15: {
+                    delay_timer_ = registers_[reigster_index];
+                    break;
+                }
+
+                case 0x18: {
+                    sound_timer_ = registers_[reigster_index];
+                    break;
+                }
+
+                case 0x1E: {
+                    index_register_ += registers_[reigster_index];
+                    break;
+                }
+
+                case 0x0A: {
+                    bool flag = false;
+                    for (int i = 0; i < kNumberOfKeys; i++) {
+                        if (key_presess_[i]) {
+                            registers_[reigster_index] = kKeyMap[i];
+                            flag = true;
+                            break;
+                        }
+                    }
+                    program_counter_ = flag ? program_counter_ : program_counter_ - 2;
+                    break;
+                }
+
+                case 0x29: {
+                    index_register_ = 0x50 + registers_[reigster_index] * 5;
+                    break;
+                }
+
+                case 0x33: {
+                    uint8_t number = registers_[reigster_index];
+                    memory_[index_register_] = (number / 100) % 10;
+                    memory_[index_register_ + 1] = (number / 10) % 10;
+                    memory_[index_register_ + 2] = number % 10;
+                    break;
+                }
+
+                case 0x55: {
+                    uint8_t limit = reigster_index;
+                    for (int i = 0; i <= limit; i++) {
+                        memory_[index_register_ + i] = registers_[i];
+                    }
+                    break;
+                }
+
+                case 0x65: {
+                    uint8_t limit = reigster_index;
+                    for (int i = 0; i <= limit; i++) {
+                        registers_[i] = memory_[index_register_ + i];
+                    }
+                    break;
+                }
+            }
+            break;
+        }
     }
 }
 
@@ -215,6 +340,7 @@ void Chip8::Execute() {
 Chip8::Chip8() {
     program_counter_ = kProgramStart;
     stack_pointer_ = 0;
+    last_updated_ = std::chrono::steady_clock::now();
     memset(display_data_.data(), 0, sizeof(display_data_));
     memset(memory_.data(), 0, sizeof(memory_));
 
@@ -224,24 +350,19 @@ Chip8::Chip8() {
 }
 
 void Chip8::TickTimers() {
-    const std::chrono::steady_clock clock;
-    std::chrono::time_point last_updated = clock.now();
-
-    const std::chrono::milliseconds tick_duration = std::chrono::milliseconds(1000 / kTimerFrequency);
-
-    while(true) {
-        std::chrono::duration time_elpased = clock.now() - last_updated;
-        last_updated = clock.now();
-
-        if (time_elpased > tick_duration) {
-            if (delay_timer_) {
-                delay_timer_--;
-            }
-
-            if (sound_timer_) {
-                sound_timer_--;
-            }
+    std::chrono::time_point<std::chrono::steady_clock> current_time = std::chrono::steady_clock::now();
+    std::chrono::duration<double> elapsed_time = current_time - last_updated_;
+    while (elapsed_time > kTickInterval) {
+        if (delay_timer_ > 0) {
+            delay_timer_--;
         }
+
+        if (sound_timer_ > 0) {
+            sound_timer_--;
+        }
+
+        last_updated_ += kTickInterval;
+        elapsed_time = current_time - last_updated_;
     }
 }
 
