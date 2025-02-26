@@ -8,10 +8,10 @@
 constexpr int kMemorySize = 4096;
 constexpr uint8_t kNumberOfKeys = 16;
 constexpr std::array<int, kNumberOfKeys> kKeys = {
-    KEY_ONE, KEY_TWO, KEY_THREE, KEY_FOUR, 
-    KEY_Q, KEY_W, KEY_E, KEY_R,
-    KEY_A, KEY_S, KEY_D, KEY_F,
-    KEY_Z, KEY_X, KEY_C, KEY_V
+    KEY_X, KEY_ONE, KEY_TWO, KEY_THREE,
+    KEY_Q, KEY_W, KEY_E, KEY_A,
+    KEY_S, KEY_D, KEY_Z, KEY_C,
+    KEY_FOUR, KEY_R, KEY_V, KEY_F
 };
 constexpr std::array<int, kNumberOfKeys> kKeyMap = {
     1, 2, 3, 0xC,

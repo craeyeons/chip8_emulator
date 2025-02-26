@@ -16,10 +16,9 @@ int main(int argc, char* argv[]) {
     InitWindow(kDisplayWidth * kPixelSize, kDisplayHeight * kPixelSize, "Chip 8 Emulator");
     SetTargetFPS(kFPS);
 
-    while (!WindowShouldClose())
-    {
-        emulator.LogKeyPresses();
+    while (!WindowShouldClose()){
         emulator.Execute();
+
         if (emulator.trigger_redraw_) {
             emulator.trigger_redraw_ = false;
 

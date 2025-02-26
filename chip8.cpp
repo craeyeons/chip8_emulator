@@ -41,18 +41,18 @@ bool Chip8::LoadProgram(const std::string filename) {
 void Chip8::LogKeyPresses() {
     for (int i = 0; i < kNumberOfKeys; i++) {
         if (IsKeyDown(kKeys[i])) {
-            key_presess_[kKeyMap[i]] = 1;
-        } else {
-            key_presess_[kKeyMap[i]] = 0;
+            key_presses_[i] = 1;
+        } else if (IsKeyUp(kKeys[i])) {
+            key_presses_[i] = 0;
         }
     }
 }
 
 void Chip8::Execute() {   
     TickTimers();
+    LogKeyPresses();
 
     uint16_t opcode = memory_[program_counter_] << 8 | memory_[program_counter_ + 1];
-    std::cout << std::hex << opcode << std::endl;
 
     program_counter_ += 2;
 
@@ -153,13 +153,13 @@ void Chip8::Execute() {
                     break;
 
                 case 4:
-                    registers_[0xF] = x + y > 255 ? 1 : 0;
                     registers_[(opcode & 0x0F00) >> 8] += y;
+                    registers_[0xF] = x + y > 255 ? 1 : 0;
                     break;
 
                 case 5:
-                    registers_[0xF] = x > y ? 1 : 0;
                     registers_[(opcode & 0x0F00) >> 8] = x - y;
+                    registers_[0xF] = x >= y ? 1 : 0;
                     break;
 
                 case 6:
@@ -168,8 +168,8 @@ void Chip8::Execute() {
                     break;
 
                 case 7:
-                    registers_[0xF] = x < y ? 1 : 0;
                     registers_[(opcode & 0x0F00) >> 8] = y - x;
+                    registers_[0xF] = x <= y ? 1 : 0;
                     break;
 
                 case 0xE:
@@ -242,9 +242,9 @@ void Chip8::Execute() {
 
         // 0xEX9E and EXA1: Skip if key
         case 0xE000: {
-            uint8_t reigster_index = (opcode & 0xF00) >> 8;
-            uint8_t corresponding_key = registers_[reigster_index];
-            uint8_t is_pressed = key_presess_[corresponding_key];
+            uint8_t register_index = (opcode & 0xF00) >> 8;
+            uint8_t corresponding_key = registers_[register_index];
+            uint8_t is_pressed = key_presses_[corresponding_key];
             uint8_t last_two_nibbles = opcode & 0xFF;
 
             switch (last_two_nibbles) {
@@ -266,34 +266,34 @@ void Chip8::Execute() {
         }
 
         case 0xF000: {
-            uint8_t reigster_index = (opcode & 0xF00) >> 8;
+            uint8_t register_index = (opcode & 0xF00) >> 8;
             uint8_t last_two_nibbles = opcode & 0xFF;
             switch (last_two_nibbles) {
                 case 0x07: {
-                    registers_[reigster_index] = delay_timer_;
+                    registers_[register_index] = delay_timer_;
                     break;
                 }
 
                 case 0x15: {
-                    delay_timer_ = registers_[reigster_index];
+                    delay_timer_ = registers_[register_index];
                     break;
                 }
 
                 case 0x18: {
-                    sound_timer_ = registers_[reigster_index];
+                    sound_timer_ = registers_[register_index];
                     break;
                 }
 
                 case 0x1E: {
-                    index_register_ += registers_[reigster_index];
+                    index_register_ += registers_[register_index];
                     break;
                 }
 
                 case 0x0A: {
                     bool flag = false;
                     for (int i = 0; i < kNumberOfKeys; i++) {
-                        if (key_presess_[i]) {
-                            registers_[reigster_index] = kKeyMap[i];
+                        if (key_presses_[i]) {
+                            registers_[register_index] = i;
                             flag = true;
                             break;
                         }
@@ -303,12 +303,12 @@ void Chip8::Execute() {
                 }
 
                 case 0x29: {
-                    index_register_ = 0x50 + registers_[reigster_index] * 5;
+                    index_register_ = 0x50 + registers_[register_index] * 5;
                     break;
                 }
 
                 case 0x33: {
-                    uint8_t number = registers_[reigster_index];
+                    uint8_t number = registers_[register_index];
                     memory_[index_register_] = (number / 100) % 10;
                     memory_[index_register_ + 1] = (number / 10) % 10;
                     memory_[index_register_ + 2] = number % 10;
@@ -316,7 +316,7 @@ void Chip8::Execute() {
                 }
 
                 case 0x55: {
-                    uint8_t limit = reigster_index;
+                    uint8_t limit = register_index;
                     for (int i = 0; i <= limit; i++) {
                         memory_[index_register_ + i] = registers_[i];
                     }
@@ -324,7 +324,7 @@ void Chip8::Execute() {
                 }
 
                 case 0x65: {
-                    uint8_t limit = reigster_index;
+                    uint8_t limit = register_index;
                     for (int i = 0; i <= limit; i++) {
                         registers_[i] = memory_[index_register_ + i];
                     }
@@ -343,6 +343,8 @@ Chip8::Chip8() {
     last_updated_ = std::chrono::steady_clock::now();
     memset(display_data_.data(), 0, sizeof(display_data_));
     memset(memory_.data(), 0, sizeof(memory_));
+    memset(key_presses_.data(), 0, sizeof(key_presses_));
+    memset(registers_.data(), 0, sizeof(registers_));
 
     for (int i = 0; i < 16 * 5; i++) {
         StoreInMemory(0x50 + 2 * i, kFonts[i]);

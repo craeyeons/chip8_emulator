@@ -22,7 +22,7 @@ private:
     uint16_t stack_pointer_;
     std::array<uint16_t, kStackSize> stack_;
     std::array<uint8_t, kNumberOfRegisters> registers_;
-    std::array<uint8_t, kNumberOfKeys> key_presess_;
+    std::array<bool, kNumberOfKeys> key_presses_;
     
     std::chrono::time_point<std::chrono::steady_clock> last_updated_;
     uint8_t delay_timer_;
