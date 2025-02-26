@@ -14,7 +14,6 @@ public:
     std::array<std::array<uint8_t, kDisplayHeight>, kDisplayWidth> display_data_;
     bool LoadProgram(const std::string filename);
     void Execute();
-    void LogKeyPresses();
 private:
     std::array<uint8_t, kMemorySize> memory_;
     uint16_t program_counter_;
@@ -29,6 +28,7 @@ private:
     uint8_t sound_timer_;
 
     void TickTimers();
+    void LogKeyPresses();
     void StoreInMemory(int offset, uint8_t to_save);
     void StoreInMemory(int offset, uint16_t to_save);
 };
